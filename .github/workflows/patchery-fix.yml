@@ -1,0 +1,54 @@
+# One-off workflow: run Patchery against this fork to fix the OpenAI Assistants
+# API sunset (retired 2026-08-26). Not part of the upstream repo - lives only on
+# this fork while Patchery dogfoods a real fix.
+name: patchery-fix
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fix the broken dependency
+        id: sma
+        uses: patchery-dev/Patchery@v0
+        with:
+          package: openai
+          target-dir: "."
+          test-command: "npm test"
+          changelog: "https://developers.openai.com/api/docs/assistants/migration"
+          require-failing-baseline: "false"
+          extra-instructions: >-
+            The OpenAI Assistants API (openai.beta.assistants.*, openai.beta.threads.*)
+            was fully retired by OpenAI on 2026-08-26. This project's own test suite does
+            not happen to exercise the affected files directly, so tests currently pass -
+            this is a real, already-shipped production breakage, not a hypothetical one.
+            Migrate the call sites in src/chat-pipeline/chat-pipeline-assistant-api.ts and
+            src/chat-pipeline/stages/create-assistant.ts and get-response.ts to the
+            Responses API (openai.responses.create) per OpenAI's migration guide. Keep the
+            change as small and faithful to the existing code style as possible.
+          anthropic-auth-token: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
+          anthropic-base-url: ${{ secrets.ANTHROPIC_BASE_URL }}
+          anthropic-model: ${{ secrets.ANTHROPIC_MODEL }}
+
+      - name: Open a pull request
+        if: steps.sma.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: patchery/openai-assistants-sunset
+          title: "fix(openai): migrate off the retired Assistants API"
+          body-path: ${{ steps.sma.outputs.pr-body-file }}
+          add-paths: ${{ steps.sma.outputs.files }}
+          commit-message: "fix(openai): migrate off the retired Assistants API"
+          labels: dependencies, automated
+          delete-branch: true
