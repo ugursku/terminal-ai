@@ -28,8 +28,8 @@ jobs:
           test-command: "npm test"
           changelog: "https://developers.openai.com/api/docs/assistants/migration"
           require-failing-baseline: "false"
-          max-turns: "35"
-          stall-no-edit-turns: "22"
+          max-turns: "55"
+          stall-no-edit-turns: "40"
           extra-instructions: >-
             The OpenAI Assistants API (openai.beta.assistants.*, openai.beta.threads.*)
             was fully retired by OpenAI on 2026-08-26. This project's own test suite does
